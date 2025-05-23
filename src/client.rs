@@ -138,7 +138,7 @@
 use crate::codec::{Codec, SendError, UserError};
 use crate::ext::Protocol;
 use crate::frame::{
-    Headers, Priority, Pseudo, PseudoOrder, PseudoOrders, Reason, Settings, SettingsOrder,
+    Headers, Priority, Pseudo, PseudoOrder, PseudoOrders, Reason, Setting, Settings, SettingsOrder,
     StreamDependency, StreamId,
 };
 use crate::proto::{self, Error};
@@ -696,7 +696,7 @@ impl Builder {
     }
 
     /// Settings frame order
-    pub fn settings_order(&mut self, order: [SettingsOrder; 8]) -> &mut Self {
+    pub fn settings_order(&mut self, order: SettingsOrder) -> &mut Self {
         self.settings.set_settings_order(Some(order));
         self
     }
@@ -1193,13 +1193,13 @@ impl Builder {
         self
     }
 
-    /// Configures HTTP/2 setting with identifier 9.
+    /// Configures custom HTTP/2 setting.
     ///
     /// This setting is reserved for future use or experimental purposes.
     /// Enabling or disabling it may have no effect unless explicitly supported
     /// by the server or client implementation.
-    pub fn unknown_setting9(&mut self, enabled: bool) -> &mut Self {
-        self.settings.set_unknown_setting_9(enabled);
+    pub fn unknown_settings(&mut self, iter: impl IntoIterator<Item = Setting>) -> &mut Self {
+        self.settings.set_unknown_settings(iter);
         self
     }
 
