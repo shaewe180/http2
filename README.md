@@ -27,8 +27,6 @@ This package focuses solely on implementing the HTTP/2 specification. It support
 * Headers frame priority and pseudo-header permutation
 * Priority frame (client-side only)
 
-For additional features, consider using [hyper2](https://github.com/0x676e67/hyper2), which builds on this package.
-
 ## Accolades
 
 The project is based on a fork of [h2](https://github.com/hyperium/h2).
