@@ -272,8 +272,8 @@ impl Settings {
         debug_assert!(!settings.flags.is_ack());
 
         for raw in payload.chunks(6) {
-            match Setting::load(raw) {
-                Some(setting) => match setting.id {
+            if let Some(setting) = Setting::load(raw) {
+                match setting.id {
                     SettingId::HeaderTableSize => {
                         settings.header_table_size = Some(setting.value);
                     }
@@ -329,8 +329,7 @@ impl Settings {
                             .get_or_insert_with(SmallVec::new)
                             .push(setting);
                     }
-                },
-                None => {}
+                }
             }
         }
 
