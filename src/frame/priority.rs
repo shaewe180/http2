@@ -157,6 +157,8 @@ impl StreamDependency {
     }
 }
 
+const DEFAULT_STACK_SIZE: usize = 8;
+
 /// A collection of HTTP/2 PRIORITY frames.
 ///
 /// The `Priorities` struct maintains an ordered list of `Priority` frames,
@@ -166,7 +168,7 @@ impl StreamDependency {
 /// stream reprioritization.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Priorities {
-    priorities: SmallVec<[Priority; 8]>,
+    priorities: SmallVec<[Priority; DEFAULT_STACK_SIZE]>,
     max_stream_id: StreamId,
 }
 
@@ -179,8 +181,9 @@ pub struct Priorities {
 /// instance for use in the HTTP/2 connection or frame layer.
 #[derive(Debug)]
 pub struct PrioritiesBuilder {
-    priorities: SmallVec<[Priority; 8]>,
+    priorities: SmallVec<[Priority; DEFAULT_STACK_SIZE]>,
     max_stream_id: StreamId,
+    inserted_bitmap: u32,
 }
 
 // ===== impl Priorities =====
@@ -190,6 +193,7 @@ impl Priorities {
         PrioritiesBuilder {
             priorities: SmallVec::new(),
             max_stream_id: StreamId::zero(),
+            inserted_bitmap: 0,
         }
     }
 
@@ -214,6 +218,36 @@ impl PrioritiesBuilder {
         if priority.stream_id.is_zero() {
             tracing::warn!("ignoring priority frame with stream ID 0");
             return self;
+        }
+
+        const MAX_BITMAP_STREAMS: u32 = 32;
+
+        let id: u32 = priority.stream_id.into();
+        // Check for duplicate priorities based on stream ID.
+        // For stream IDs less than MAX_BITMAP_STREAMS, we use a bitmap to track inserted priorities.
+        if id < MAX_BITMAP_STREAMS {
+            let mask = 1u32 << id;
+            if self.inserted_bitmap & mask != 0 {
+                tracing::debug!(
+                    "duplicate priority for stream_id={:?} ignored",
+                    priority.stream_id
+                );
+                return self;
+            }
+            self.inserted_bitmap |= mask;
+        } else {
+            // For stream_id greater than 31, duplicate checking is still performed using iterators.
+            if self
+                .priorities
+                .iter()
+                .any(|p| p.stream_id == priority.stream_id)
+            {
+                tracing::debug!(
+                    "duplicate priority for stream_id={:?} ignored",
+                    priority.stream_id
+                );
+                return self;
+            }
         }
 
         if priority.stream_id > self.max_stream_id {
@@ -279,5 +313,31 @@ mod tests {
 
         assert_eq!(priorities.priorities.len(), 1);
         assert_eq!(priorities.priorities[0].stream_id(), StreamId::from(3));
+    }
+
+    #[test]
+    fn test_priorities_builder_ignores_duplicate_priorities() {
+        use crate::frame::{Priorities, Priority, StreamDependency, StreamId};
+
+        let dependency = StreamDependency::new(StreamId::from(1), 50, false);
+        let priority1 = Priority::new(StreamId::from(4), dependency);
+
+        let dependency2 = StreamDependency::new(StreamId::from(2), 100, false);
+        let priority2 = Priority::new(StreamId::from(4), dependency2); // Duplicate stream ID
+
+        let priorities = Priorities::builder().extend([priority1, priority2]).build();
+        assert_eq!(priorities.priorities.len(), 1);
+        assert_eq!(priorities.priorities[0].stream_id(), StreamId::from(4));
+
+        // stream id > 31
+        let dependency3 = StreamDependency::new(StreamId::from(32), 150, false);
+        let priority3 = Priority::new(StreamId::from(32), dependency3);
+
+        let dependency4 = StreamDependency::new(StreamId::from(32), 200, false); // Duplicate stream ID
+        let priority4 = Priority::new(StreamId::from(32), dependency4);
+
+        let priorities = Priorities::builder().extend([priority3, priority4]).build();
+        assert_eq!(priorities.priorities.len(), 1);
+        assert_eq!(priorities.priorities[0].stream_id(), StreamId::from(32));
     }
 }
