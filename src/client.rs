@@ -138,7 +138,7 @@
 use crate::codec::{Codec, SendError, UserError};
 use crate::ext::Protocol;
 use crate::frame::{
-    Headers, Priority, Pseudo, PseudoOrder, PseudoOrders, Reason, Setting, Settings, SettingsOrder,
+    Headers, Priority, Pseudo, PseudoOrder, Reason, Setting, Settings, SettingsOrder,
     StreamDependency, StreamId,
 };
 use crate::proto::{self, Error};
@@ -350,7 +350,7 @@ pub struct Builder {
     local_max_error_reset_streams: Option<usize>,
 
     /// The headers frame pseudo order
-    headers_pseudo_order: Option<PseudoOrders>,
+    headers_pseudo_order: Option<PseudoOrder>,
 
     /// The headers frame priority
     headers_priority: Option<StreamDependency>,
@@ -683,25 +683,39 @@ impl Builder {
         }
     }
 
-    /// Set http2 header pseudo order
-    pub fn headers_psuedo(&mut self, order: [PseudoOrder; 4]) -> &mut Self {
+    /// Sets the HTTP/2 pseudo-header field order for outgoing HEADERS frames.
+    ///
+    /// This determines the order in which pseudo-header fields (such as `:method`, `:scheme`, etc.)
+    /// are encoded in the HEADERS frame. Customizing the order may be useful for interoperability
+    /// or testing purposes.
+    pub fn headers_psuedo_order(&mut self, order: PseudoOrder) -> &mut Self {
         self.headers_pseudo_order = Some(order.into());
         self
     }
 
-    /// Set http2 header priority
+    /// Sets the stream dependency and weight for the outgoing HEADERS frame.
+    ///
+    /// This configures the priority of the stream by specifying its dependency and weight,
+    /// as defined by the HTTP/2 priority mechanism. This can be used to influence how the
+    /// server allocates resources to this stream relative to others.
     pub fn headers_priority(&mut self, headers_priority: StreamDependency) -> &mut Self {
         self.headers_priority = Some(headers_priority);
         self
     }
 
-    /// Settings frame order
+    /// Sets the order of settings parameters in the initial SETTINGS frame.
+    ///
+    /// This determines the order in which settings are sent during the HTTP/2 handshake.
+    /// Customizing the order may be useful for testing or protocol compliance.
     pub fn settings_order(&mut self, order: SettingsOrder) -> &mut Self {
         self.settings.set_settings_order(Some(order));
         self
     }
 
-    /// Priority stream list
+    /// Sets the list of priority frames to be sent before the first request.
+    ///
+    /// This allows you to specify a list of PRIORITY frames that will be sent on connection
+    /// establishment, which can be used to pre-configure the stream dependency tree.
     pub fn priority(&mut self, priority: Cow<'static, [Priority]>) -> &mut Self {
         self.priority = Some(priority);
         self
@@ -1663,7 +1677,7 @@ impl Peer {
         request: Request<()>,
         protocol: Option<Protocol>,
         end_of_stream: bool,
-        pseudo_order: Option<PseudoOrders>,
+        pseudo_order: Option<PseudoOrder>,
         headers_priority: Option<StreamDependency>,
         priority: Option<Cow<'static, [Priority]>>,
     ) -> Result<(Option<Cow<'static, [Priority]>>, Headers), SendError> {
