@@ -106,7 +106,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     environment: Linux
-    needs: [style]
+    needs: [style, msrv, test]
     steps:
       - uses: actions/checkout@v3
 
