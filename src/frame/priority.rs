@@ -236,7 +236,7 @@ impl PrioritiesBuilder {
             }
             self.inserted_bitmap |= mask;
         } else {
-            // For stream_id greater than 31, duplicate checking is still performed using iterators.
+            // For stream_id greater than or equal to MAX_BITMAP_STREAMS, duplicate checking is still performed using iterators.
             if self
                 .priorities
                 .iter()
