@@ -76,7 +76,7 @@ pub(super) struct VacantEntry<'a> {
 }
 
 pub(super) trait Resolve {
-    fn resolve(&mut self, key: Key) -> Ptr;
+    fn resolve(&mut self, key: Key) -> Ptr<'_>;
 }
 
 // ===== impl Store =====
@@ -89,7 +89,7 @@ impl Store {
         }
     }
 
-    pub fn find_mut(&mut self, id: &StreamId) -> Option<Ptr> {
+    pub fn find_mut(&mut self, id: &StreamId) -> Option<Ptr<'_>> {
         let index = match self.ids.get(id) {
             Some(key) => *key,
             None => return None,
@@ -104,7 +104,7 @@ impl Store {
         })
     }
 
-    pub fn insert(&mut self, id: StreamId, val: Stream) -> Ptr {
+    pub fn insert(&mut self, id: StreamId, val: Stream) -> Ptr<'_> {
         let index = SlabIndex(self.slab.insert(val) as u32);
         assert!(self.ids.insert(id, index).is_none());
 
@@ -117,7 +117,7 @@ impl Store {
         }
     }
 
-    pub fn find_entry(&mut self, id: StreamId) -> Entry {
+    pub fn find_entry(&mut self, id: StreamId) -> Entry<'_> {
         use self::indexmap::map::Entry::*;
 
         match self.ids.entry(id) {
@@ -179,7 +179,7 @@ impl Store {
 }
 
 impl Resolve for Store {
-    fn resolve(&mut self, key: Key) -> Ptr {
+    fn resolve(&mut self, key: Key) -> Ptr<'_> {
         Ptr { key, store: self }
     }
 }
@@ -414,7 +414,7 @@ impl<'a> Ptr<'a> {
 }
 
 impl<'a> Resolve for Ptr<'a> {
-    fn resolve(&mut self, key: Key) -> Ptr {
+    fn resolve(&mut self, key: Key) -> Ptr<'_> {
         Ptr {
             key,
             store: &mut *self.store,
