@@ -1,5 +1,5 @@
 [package]
-name = "http2"
+name = "h2"
 # When releasing to crates.io:
 # - Update CHANGELOG.md.
 # - Create git tag
