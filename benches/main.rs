@@ -1,11 +1,11 @@
 use bytes::Bytes;
+use h2;
 use h2::{
     client,
     server::{self, SendResponse},
     RecvStream,
 };
 use http::Request;
-use http2 as h2;
 
 use std::{
     error::Error,
