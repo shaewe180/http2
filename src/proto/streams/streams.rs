@@ -6,13 +6,13 @@ use std::{
 
 use bytes::{Buf, Bytes};
 use http::{HeaderMap, Request, Response};
-use parking_lot::Mutex;
 use tokio::io::AsyncWrite;
 
 use super::{
     frame::{Priorities, PseudoOrder, StreamDependency},
     recv::RecvHeaderBlockError,
     store::{self, Entry, Resolve, Store},
+    sync::Mutex,
     Buffer, Config, Counts, Prioritized, Recv, Send, Stream, StreamId,
 };
 use crate::{
@@ -1467,7 +1467,12 @@ impl OpaqueStreamRef {
 
 impl fmt::Debug for OpaqueStreamRef {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match self.inner.try_lock() {
+        #[cfg(feature = "parking_lot")]
+        let lock_result = self.inner.try_lock();
+        #[cfg(not(feature = "parking_lot"))]
+        let lock_result = self.inner.try_lock().ok();
+
+        match lock_result {
             Some(me) => {
                 let stream = &me.store[self.key];
                 fmt.debug_struct("OpaqueStreamRef")
